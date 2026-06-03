@@ -1,0 +1,38 @@
+### Laravel Core ###
+/node_modules
+/public/hot
+/public/storage
+/storage/*.key
+/vendor
+.env
+.env.backup
+.env.production
+.phpunit.result.cache
+docker-compose.override.yml
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/.project
+/.idea
+/.vscode
+
+### Laravel Livewire (Jika pakai) ###
+.livewire-view-cache
+
+### Storage & Logs ###
+# Mengabaikan semua file di direktori ini...
+/storage/app/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+/storage/logs/*
+
+# ...Kecuali file .gitignore di dalamnya agar struktur folder tetap ter-commit
+!/storage/app/.gitignore
+!/storage/framework/cache/.gitignore
+!/storage/framework/sessions/.gitignore
+!/storage/framework/testing/.gitignore
+!/storage/framework/views/.gitignore
+!/storage/logs/.gitignore
