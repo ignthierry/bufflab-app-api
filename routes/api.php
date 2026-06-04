@@ -5,8 +5,10 @@ use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ServiceController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\AuthController;
 
 Route::prefix('v1')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
     Route::get('/services', [ServiceController::class, 'index']);
     Route::patch('/services/{service}/price', [ServiceController::class, 'updatePrice']);
