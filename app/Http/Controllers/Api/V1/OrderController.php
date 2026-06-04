@@ -117,7 +117,9 @@ class OrderController extends Controller
 
                 // Decode photo_base64 if present
                 if (!empty($itemData['photo_base64'])) {
-                    $photoData = base64_decode($itemData['photo_base64']);
+                    // Strip the "data:image/jpeg;base64," prefix from the base64 string
+                    $base64Str = preg_replace('#^data:image/\w+;base64,#i', '', $itemData['photo_base64']);
+                    $photoData = base64_decode($base64Str);
                     $filename = "{$invoiceNumber}_{$index}.jpg";
                     Storage::disk('public')->put("photos/{$filename}", $photoData);
                     $photoPath = "photos/{$filename}";
