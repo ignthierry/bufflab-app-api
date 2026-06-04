@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 Route::prefix('v1')->group(function () {
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
     Route::get('/services', [ServiceController::class, 'index']);
+    Route::patch('/services/{service}/price', [ServiceController::class, 'updatePrice']);
     Route::get('/customers/search', [CustomerController::class, 'search']);
     Route::get('/orders', [OrderController::class, 'index']);
     Route::post('/orders', [OrderController::class, 'store']);

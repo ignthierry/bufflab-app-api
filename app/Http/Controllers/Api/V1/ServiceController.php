@@ -30,4 +30,29 @@ class ServiceController extends Controller
             'data' => $services,
         ]);
     }
+
+    /**
+     * Update the price of a service.
+     */
+    public function updatePrice(\Illuminate\Http\Request $request, Service $service)
+    {
+        $request->validate([
+            'price' => 'required|integer|min:0',
+        ]);
+
+        $service->update([
+            'price' => $request->price,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $service->id,
+                'service_name' => $service->name,
+                'price' => $service->price,
+                'estimated_days' => $service->estimated_days ?? 3,
+            ],
+            'message' => 'Harga layanan berhasil diperbarui'
+        ]);
+    }
 }
