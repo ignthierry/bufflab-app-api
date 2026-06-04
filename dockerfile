@@ -1,9 +1,9 @@
-FROM php:8.2-fpm-alpine
+# ==========================================
+# Stage 1: Aplikasi Utama Laravel API
+# ==========================================
+FROM php:8.3-fpm-alpine
 
-# Set working directory
-WORKDIR /var/www/html
-
-# Install system dependencies and tools
+# Install system dependencies & PHP extensions yang dibutuhkan API
 RUN apk add --no-cache \
     nginx \
     supervisor \
@@ -13,38 +13,35 @@ RUN apk add --no-cache \
     zip \
     unzip \
     git \
-    libzip-dev \
     oniguruma-dev \
-    bash
+    libzip-dev \
+    postgresql-dev
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip opcache
+# Install PHP extensions (MySQL, PostgreSQL, dll)
+RUN docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd zip
 
-# Copy composer from official image
-COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
+# Ambil Composer terbaru
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy application source
-COPY . /var/www/html
+# Set working directory
+WORKDIR /var/www/html
 
-# Create system user and set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+# Copy semua source code ke dalam container
+COPY . .
 
-# Run composer install
-RUN composer install --no-interaction --optimize-autoloader --no-dev
+# Install Composer dependencies untuk Production
+# --no-dev akan memastikan package testing seperti Faker/Mockery tidak ikut terinstall
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Configure Nginx
-RUN mkdir -p /run/nginx
-COPY docker/nginx.conf /etc/nginx/nginx.conf
+# Set permissions agar folder storage bisa ditulis oleh web server
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Configure Supervisor
-COPY docker/supervisord.conf /etc/supervisord.conf
+# Copy konfigurasi Nginx dan Supervisor
+COPY ./docker/nginx.conf /etc/nginx/nginx.conf
+COPY ./docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Configure PHP Opcache
-RUN echo -e "opcache.enable=1\nopcache.memory_consumption=256\nopcache.max_accelerated_files=20000\nopcache.revalidate_freq=0\nopcache.validate_timestamps=0" > /usr/local/etc/php/conf.d/opcache-recommended.ini
-
-# Expose port
+# Expose port 80 untuk traffic HTTP (Coolify akan mengarah ke sini)
 EXPOSE 80
 
-# Start Supervisor (which manages Nginx and PHP-FPM)
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+# Jalankan Nginx dan PHP-FPM secara bersamaan via Supervisor
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
