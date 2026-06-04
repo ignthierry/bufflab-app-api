@@ -14,5 +14,6 @@ Route::prefix('v1')->group(function () {
     Route::post('/orders', [OrderController::class, 'store']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
     Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus']);
+    Route::patch('/orders/{order}/payment', [OrderController::class, 'updatePayment']);
     Route::get('/invoice/{invoiceNumber}', [OrderController::class, 'showByInvoice']);
 });

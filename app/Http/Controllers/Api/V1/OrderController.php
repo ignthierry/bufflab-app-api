@@ -185,15 +185,49 @@ class OrderController extends Controller
         ]);
 
         $order = Order::findOrFail($id);
-        $order->update([
+        
+        $updateData = [
             'order_status' => $request->input('order_status'),
-        ]);
+        ];
+
+        // If order_status is set to completed, automatically mark as paid
+        if ($request->input('order_status') === 'completed') {
+            $updateData['payment_status'] = 'paid';
+            $updateData['amount_paid'] = $order->total_price;
+        }
+
+        $order->update($updateData);
 
         $order->load(['customer', 'items.service']);
 
         return response()->json([
             'success' => true,
             'message' => 'Order status updated successfully',
+            'data' => $order,
+        ]);
+    }
+
+    /**
+     * Update order payment status.
+     */
+    public function updatePayment($id, Request $request)
+    {
+        $request->validate([
+            'payment_status' => ['required', Rule::in(['unpaid', 'partial', 'paid'])],
+            'amount_paid' => 'required|numeric|min:0',
+        ]);
+
+        $order = Order::findOrFail($id);
+        $order->update([
+            'payment_status' => $request->input('payment_status'),
+            'amount_paid' => $request->input('amount_paid'),
+        ]);
+
+        $order->load(['customer', 'items.service']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status pembayaran berhasil diperbarui',
             'data' => $order,
         ]);
     }
