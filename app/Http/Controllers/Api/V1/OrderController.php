@@ -67,6 +67,8 @@ class OrderController extends Controller
             'items.*.size' => 'nullable|integer',
             'items.*.initial_condition_notes' => 'nullable|string',
             'items.*.photo_base64' => 'nullable|string',
+            'items.*.photo_base64_array' => 'nullable|array|max:3',
+            'items.*.photo_base64_array.*' => 'nullable|string',
         ]);
 
         return DB::transaction(function () use ($request) {
@@ -113,17 +115,31 @@ class OrderController extends Controller
 
             // 5 & 6. Create OrderItem records with photo handling
             foreach ($items as $index => $itemData) {
-                $photoPath = null;
+                $photoPaths = [];
 
-                // Decode photo_base64 if present
+                // Decode single photo_base64 if present (backward compatibility)
                 if (!empty($itemData['photo_base64'])) {
-                    // Strip the "data:image/jpeg;base64," prefix from the base64 string
                     $base64Str = preg_replace('#^data:image/\w+;base64,#i', '', $itemData['photo_base64']);
                     $photoData = base64_decode($base64Str);
-                    $filename = "{$invoiceNumber}_{$index}.jpg";
+                    $filename = "{$invoiceNumber}_{$index}_single.jpg";
                     Storage::disk('public')->put("photos/{$filename}", $photoData);
-                    $photoPath = "photos/{$filename}";
+                    $photoPaths[] = "photos/{$filename}";
                 }
+
+                // Decode photo_base64_array if present
+                if (!empty($itemData['photo_base64_array']) && is_array($itemData['photo_base64_array'])) {
+                    foreach ($itemData['photo_base64_array'] as $pIndex => $base64) {
+                        if (!empty($base64)) {
+                            $base64Str = preg_replace('#^data:image/\w+;base64,#i', '', $base64);
+                            $photoData = base64_decode($base64Str);
+                            $filename = "{$invoiceNumber}_{$index}_{$pIndex}.jpg";
+                            Storage::disk('public')->put("photos/{$filename}", $photoData);
+                            $photoPaths[] = "photos/{$filename}";
+                        }
+                    }
+                }
+
+                $photoPath = count($photoPaths) > 0 ? $photoPaths[0] : null;
 
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -135,6 +151,7 @@ class OrderController extends Controller
                     'size' => $itemData['size'] ?? null,
                     'initial_condition_notes' => $itemData['initial_condition_notes'] ?? null,
                     'photo_path' => $photoPath,
+                    'photo_paths' => count($photoPaths) > 0 ? $photoPaths : null,
                 ]);
             }
 
@@ -184,6 +201,10 @@ class OrderController extends Controller
     {
         $request->validate([
             'order_status' => ['required', Rule::in(['pending', 'processing', 'ready', 'completed', 'cancelled'])],
+            'items' => 'nullable|array',
+            'items.*.id' => 'required_with:items|exists:order_items,id',
+            'items.*.after_photo_base64_array' => 'nullable|array|max:3',
+            'items.*.after_photo_base64_array.*' => 'nullable|string',
         ]);
 
         $order = Order::findOrFail($id);
@@ -199,6 +220,31 @@ class OrderController extends Controller
         }
 
         $order->update($updateData);
+
+        // Process after-wash photos if status is 'ready' and items are provided
+        if ($request->input('order_status') === 'ready' && $request->has('items')) {
+            foreach ($request->input('items') as $itemData) {
+                $orderItem = OrderItem::where('id', $itemData['id'])
+                    ->where('order_id', $order->id)
+                    ->first();
+                
+                if ($orderItem && !empty($itemData['after_photo_base64_array'])) {
+                    $afterPhotoPaths = [];
+                    foreach ($itemData['after_photo_base64_array'] as $pIndex => $base64) {
+                        if (!empty($base64)) {
+                            $base64Str = preg_replace('#^data:image/\w+;base64,#i', '', $base64);
+                            $photoData = base64_decode($base64Str);
+                            $filename = "{$order->invoice_number}_after_{$orderItem->id}_{$pIndex}.jpg";
+                            Storage::disk('public')->put("photos/{$filename}", $photoData);
+                            $afterPhotoPaths[] = "photos/{$filename}";
+                        }
+                    }
+                    if (count($afterPhotoPaths) > 0) {
+                        $orderItem->update(['after_photo_paths' => $afterPhotoPaths]);
+                    }
+                }
+            }
+        }
 
         $order->load(['customer', 'items.service']);
 

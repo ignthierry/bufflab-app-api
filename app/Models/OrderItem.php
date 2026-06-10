@@ -17,8 +17,14 @@ class OrderItem extends Model
         'color',
         'material',
         'size',
-        'initial_condition_notes',
         'photo_path',
+        'photo_paths',
+        'after_photo_paths',
+    ];
+
+    protected $casts = [
+        'photo_paths' => 'array',
+        'after_photo_paths' => 'array',
     ];
 
     public function order()
